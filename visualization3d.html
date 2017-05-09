@@ -1,0 +1,243 @@
+<head>
+  	<!-- Plotly.js -->
+	<script src="plotly-latest.min.js"></script>
+<!--    	<script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
+  	<script>
+	
+	const TRAJECTORY_MAX_POINTS = 20;
+	const DISTANCE_MAX_POINTS = 300;
+	const TIME_INDEX = 0;
+	const X_INDEX = 1;
+	const Y_INDEX = 2;
+	const Z_INDEX = 3;
+	const DISTANCE_INDEX = 1;
+	const PEAK_INDEX = 1;
+		
+	function getQueryVariable(variable)
+	{
+       var query = window.location.search.substring(1);
+       var vars = query.split("&");
+       for (var i=0;i<vars.length;i++) {
+               var pair = vars[i].split("=");
+               if(pair[0] == variable){return pair[1];}
+       }
+       return(false);
+	}
+	
+	const USER_ID = "42.8d.7c.7d.69.92.f8.eb.dc.b5"; // TODO: Change user ID
+	
+	var ws = new WebSocket("ws://none.cs.umass.edu:8080/");
+	
+	var d = new Date();
+	var start = d.getTime();  
+	
+	var trajectory = [ [d], [], [], [] ];
+	
+	var distance_vals = [ [d], [] ];
+	
+	var peak_vals = [ [], [] ];
+	
+	//websocket boilerplate
+	ws.onopen = function() {
+	    console.log("Opened!");
+	    console.log("ID," + USER_ID);
+		ws.send("Hi, server!");
+	    ws.send("ID," + USER_ID );
+	};
+	ws.onclose = function() {
+	    console.log("Closed!");
+	};
+	ws.onerror = function(err) {
+	    console.log("Error: " + err);
+	};
+
+	//message ingestion
+	ws.onmessage = function (evt) {
+//   		console.log("Received something...");
+		var data = evt.data;		
+// 		console.log("Message: " + data);
+		var obj = JSON.parse(data);
+		
+		if (obj.user_id != USER_ID) {
+			return;
+		}
+		
+//  		console.log("Received data: " + obj.sensor_type);
+		//sensor event: direct to appropriate handler
+		if (obj.sensor_type == "SENSOR_TRAJECTORY") {
+			trajectory_handler(obj.data);
+		} else if (obj.sensor_type == "SENSOR_DISTANCE") {
+			distance_handler(obj.data);
+		}
+	};
+	
+	function trajectory_handler(trajectory_data) {
+// 	 	console.log("Received trajectory data.");
+		if (trajectory[0].length > TRAJECTORY_MAX_POINTS) {
+			for (i = 0; i < 4; i++) {
+				trajectory[i].splice(0, 1);
+			}
+		}
+		
+		trajectory[TIME_INDEX].push(new Date(trajectory_data.t));
+		trajectory[X_INDEX].push(trajectory_data.x);
+		trajectory[Y_INDEX].push(trajectory_data.y);
+		trajectory[Z_INDEX].push(trajectory_data.z);		
+	}
+	
+	function distance_handler(distance_data) {
+// 	 	console.log("Received accel data.");
+		if (distance_vals[0].length > DISTANCE_MAX_POINTS) {
+			for (i = 0; i < 2; i++) {
+				distance_vals[i].splice(0, 1);
+			}
+		}
+		
+		distance_vals[TIME_INDEX].push(new Date(distance_data.t));
+		distance_vals[DISTANCE_INDEX].push(distance_data.distance);	
+	}
+	
+	function peak_handler(peak_data) {
+		console.log("Peak: " + peak_data.timestamp);
+		
+		while (peak_vals[0][0] < distance_vals[0][0]) {
+			for (i = 0; i < 2; i++) {
+				peak_vals[i].splice(0, 1);
+			}
+		}
+		peak_vals[TIME_INDEX].push(peak_data.timestamp);
+		peak_vals[PEAK_INDEX].push(peak_data.value); //TODO
+	}
+	
+	//visualization code
+	function init_plot(plot_div){
+		if (plot_div.id === 'distanceDiv'){
+			var distance_trace = {
+				x: distance_vals[TIME_INDEX], 
+				y: distance_vals[DISTANCE_INDEX], 
+				type: 'scatter',
+				name: 'x axis'
+			};
+			var peak_trace = {
+				x: peak_vals[TIME_INDEX],
+				y: peak_vals[PEAK_INDEX],
+				type: 'scatter',
+				mode: 'markers',
+				marker: {
+					size: 20,
+					opacity: 0.4,
+					line: {
+						width: 2
+					}
+				},
+				name: 'peak events',
+			};
+
+			var layout = {
+				yaxis: {range: [0, 2.5]}
+			};
+			
+			Plotly.newPlot(plot_div, [distance_trace, peak_trace], layout);
+			return(plot_div.data);
+		}
+		else if (plot_div.id === 'trajectoryDiv') {
+			var trace1 = {
+				x: trajectory[1],
+				y: trajectory[2],
+				z: trajectory[3],
+				type: 'scatter3d',
+ 				mode: 'lines',
+ 				line: {
+ 					width : 5
+ 				}
+			};
+			var layout = {
+  				scene:{
+	 				aspectmode: "manual",
+   				aspectratio: {
+     				x: 1, y: 1, z: 1,
+    			},
+   				xaxis: {
+    				nticks: 10,
+    				range: [-1, 1],
+  				},
+   				yaxis: {
+    				nticks: 10,
+    				range: [-1, 1],
+  				},
+   				zaxis: {
+   					nticks: 10,
+   					range: [-1, 1],
+  				}},
+			};
+			Plotly.newPlot(plot_div, [trace1], layout);
+			return(plot_div.data); 
+		}
+	}
+	
+	function update_plot(plotdata, plotdiv){
+		if (plotdiv.id == 'distanceDiv') {
+						
+			//x trace
+			plotdata[0].x = distance_vals[TIME_INDEX];
+			plotdata[0].y = distance_vals[X_INDEX];
+			
+			plotdata[1].x = peak_vals[TIME_INDEX];
+			plotdata[1].y = peak_vals[PEAK_INDEX];
+			
+			var plotdiv = document.getElementById('distanceDiv');
+			Plotly.redraw(plotdiv);
+		}
+
+		if (plotdiv.id == 'trajectoryDiv') {
+			plotdata[0].x = trajectory[1]
+			plotdata[0].y = trajectory[2]
+			plotdata[0].z = trajectory[3]
+			var plotdiv = document.getElementById('trajectoryDiv');
+			Plotly.redraw(plotdiv);
+		}
+	}
+	
+//	function handle_data(
+	
+	</script>
+	<style>
+      html, body {
+        height: 100%;
+        margin: 50px;
+        padding: 0;
+      }
+    </style>
+</head>
+
+<body>
+
+
+<!-- <iframe src="http://localhost:5601/#/dashboard/Steps-Dashboard?embed&_a=(filters:!(),panels:!((col:1,id:Step-Count,row:1,size_x:3,size_y:2,type:visualization),(col:4,id:Average-Accel-Value-per-Step,row:1,size_x:8,size_y:2,type:visualization)),query:(query_string:(analyze_wildcard:!t,query:'user_id%20%3D%200')),title:'Steps%20Dashboard')&_g=(refreshInterval:(display:'5%20seconds',pause:!f,section:1,value:5000),time:(from:now-15m,mode:quick,to:now))" height="250" width="1000"></iframe> -->
+  
+<!-- <iframe src="http://localhost:5601/#/dashboard/Pill-Bottle-Interactions?embed&_g=(refreshInterval:(display:'5%20seconds',pause:!f,section:1,value:5000),time:(from:now%2Fd,mode:quick,to:now%2Fd))&_a=(filters:!(),panels:!((col:1,id:Bottle-Interactions,row:1,size_x:3,size_y:2,type:visualization),(col:4,id:Bottle-Interactions-Per-Hour,row:1,size_x:9,size_y:2,type:visualization)),query:(query_string:(analyze_wildcard:!t,query:'user_id%20%3D%200')),title:'Pill%20Bottle%20Interactions')" height="250" width="1000"></iframe> -->
+
+<!-- <iframe src="http://none.cs.umass.edu:5601/#/dashboard/Bottle-Interactions-Dashboard?embed&_g=(refreshInterval:(display:'5%20seconds',pause:!f,section:1,value:5000),time:(from:now-1h,mode:quick,to:now))&_a=(filters:!(),panels:!((col:1,id:Bottle-Interactions,row:1,size_x:3,size_y:2,type:visualization),(col:4,id:Bottle-Interactions-Per-Hour,row:1,size_x:8,size_y:2,type:visualization)),query:(query_string:(analyze_wildcard:!t,query:'user_id%20%3D%200')),title:'Bottle%20Interactions%20Dashboard')" height="250" width="1000"></iframe> -->
+
+<center><h2>Trajectory</h2></center>
+<div id="trajectoryDiv" style="width: 1000px; height: 800px;"><!-- Plotly chart will be drawn inside this DIV --></div>
+<center><h2>Distance From Rest Point</h2></center>
+<div id="distanceDiv" style="width: 1000px; height: 400px;"><!-- Plotly chart will be drawn inside this DIV --></div>
+<hr>
+  <script>
+	var trajectoryPlotDiv  = document.getElementById('trajectoryDiv');
+	var trajectoryPlotData = init_plot(trajectoryPlotDiv);
+
+	var distancePlotDiv  = document.getElementById('distanceDiv');
+	var distancePlotData = init_plot(distancePlotDiv);
+
+	setInterval(function(){ 
+		update_plot(trajectoryPlotData, trajectoryPlotDiv);
+		update_plot(distancePlotData, distancePlotDiv);
+	 	}, 50);
+
+  </script>
+
+</body>
+
+
