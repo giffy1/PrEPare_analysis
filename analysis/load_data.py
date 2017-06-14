@@ -69,18 +69,23 @@ def load_data(directory):
     for fname in files:
         if (fname.endswith(".csv")):
             meta = fname.split("_")
-            if len(meta) != 4:
-                print "WARNING : File {} has invalid name. Expected it to be in form SENSOR_DEVICE_PATIENT#_TIMESTAMP.csv".format(fname)
-                continue
+#            if len(meta) != 4:
+#                print "WARNING : File {} has invalid name. Expected it to be in form SENSOR_DEVICE_PATIENT#_TIMESTAMP.csv".format(fname)
+#                continue
             
             sensor = meta[0]
             device = meta[1]
+            if device.endswith(".csv"):
+                device = device[:-4]
             
             with open(os.path.join(directory, fname), "rb") as f:
                 sensor_data = np.loadtxt(f, delimiter=',')  
             
             t = sensor_data[:,0]
-            start_index = np.where(t>=video_start)[0][0] # only load data points after video start
+            if len(np.where(t>=video_start)[0]) == 0: # TODO : no data after video start? Why would this occur?
+                start_index = 0
+            else:
+                start_index = np.where(t>=video_start)[0][0] # only load data points after video start
                 
             sensor_data = sensor_data[start_index:,:]
             sensor_data[:,0] = sensor_data[:,0] - video_start
