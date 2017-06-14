@@ -173,7 +173,7 @@ if __name__=='__main__':
     
     subprocesses = []
     NP = 0
-    for j in [1,2,3,4] + range(97,112): # participants 1-4 are Swedish folks, 97-112 are HIV patients
+    for j in [1,2,3,4] + range(97,143): # participants 1-4 are Swedish folks, 97-112 are HIV patients
         p = Process(target=segmentation, args=(queue, j))
         NP += 1
         print 'delegated task to subprocess %s' % NP
