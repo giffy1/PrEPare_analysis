@@ -125,7 +125,7 @@ def evaluate_leave_one_out(queue, patient_to_omit):
     X_test = None
     y_test = None
 
-    for j in [1,2,3,4] + range(97,143):
+    for j in subjects:
         subject_dir = os.path.join(data_dir, str(j))
         with open(os.path.join(subject_dir, constants.SEGMENTS_FN), "rb") as f:
             X_i,y_i = pickle.load(f)
@@ -176,7 +176,7 @@ Y_score = np.zeros_like(Y_test)
 
 subprocesses = []
 NP = 0
-for j in [1,2,3,4] + range(97,143):
+for j in subjects:
     p = Process(target=evaluate_leave_one_out, args=(queue, j))
     NP += 1
     print 'delegated task to subprocess %s' % NP
