@@ -16,6 +16,7 @@ connection to the server.
 import socket
 import sys
 import json
+import threading
 
 msg_request_id = "ID"
 msg_authenticate = "ID,{}\n"
@@ -23,7 +24,7 @@ msg_acknowledge_id = "ACK"
 
 class Client():
     
-    def __init__(self, user_id, disconnect_callback=None):
+    def __init__(self, user_id, disconnect_callback=None, connection_callback=None):
         self.user_id = user_id
         
         # establish the connection for sending data to the server 
@@ -41,6 +42,8 @@ class Client():
         self.function_mapping = {}
         
         self.disconnect_callback = disconnect_callback
+        self.quit = False
+        self.connection_callback = connection_callback
         
     def map_data_to_function(self, sensor_type, function):
         """
@@ -67,6 +70,9 @@ class Client():
             self.function_mapping[sensor_type].append(function)
         else:
             self.function_mapping[sensor_type] = [function]
+            
+    def set_connection_callback(self, connection_callback):
+        self.connection_callback = connection_callback
         
     def connect(self):
         """
@@ -86,8 +92,13 @@ class Client():
             sys.stdout.flush()
                 
             previous_json = ''
+            
+            self.quit = False
+            if self.connection_callback:
+                callback_thread = threading.Thread(target=self.connection_callback)
+                callback_thread.start()
                 
-            while True:
+            while not self.quit:
                 try:
                     message = self.receive_socket.recv(1024).strip()
                     json_strings = message.split("\n")
@@ -132,6 +143,9 @@ class Client():
             
             if self.disconnect_callback != None:
                 self.disconnect_callback()
+                
+    def disconnect(self):
+        self.quit = True
         
     def _authenticate(self, sock):
         """
