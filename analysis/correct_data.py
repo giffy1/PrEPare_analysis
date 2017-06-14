@@ -49,6 +49,9 @@ new_data_dir = constants.PROCESSING_DIR
 # maps patient ID to a timestamp shift, used for correction:
 shifts = {1 : 55, 2 : 55, 3 : 75, 4 : 55, 97 : 55, 98 : 55, 99 : 55, 100 : 55, 101 : 55, 102 : 75, 
           103 : 75, 104 : 75, 105 : 55, 106 : 55, 107 : 75, 108 : 55, 109 : 55, 110 : 55, 111 : 55}
+          
+for i in range(112, 143):
+    shifts[i] = 55
 
 #orientation_corrections = {1 : [-1,-1,-1], 2 : [1,-1,-1], 3 : [1,1,-1], 4 : [1,1,-1], 97 : [1,-1,-1], 98 : [1,1,-1], 
 #                            99 : [1,-1,-1], 100 : [1,1,-1], 101 : [1,-1,-1], 102 : [-1,1,-1], 103 : [1,-1,-1], 
@@ -107,6 +110,9 @@ def correct_data(patient_id):
 #    wearable_gyro_i[:,3] = wearable_gyro_i[:,3] * orientation_corrections[patient_id][2]
 
     print "Saving corrected data for patient {} to directory {}...".format(patient_id, new_subject_dir) 
+    
+    if not os.path.exists(new_subject_dir):
+        os.makedirs(new_subject_dir)
 
     # save corrected data streams
     with open(os.path.join(new_subject_dir, constants.WEARABLE_ACCELEROMETER_FN), "wb") as f:
@@ -118,7 +124,7 @@ def correct_data(patient_id):
     with open(os.path.join(new_subject_dir, constants.METAWEAR_ACCELEROMETER_FN), "wb") as f:
         np.savetxt(f, metawear_accel_i, delimiter=",")
 
-subject_ids = [1,2,3,4] + range(97,112) # participants 1-4 are Swedish folks, 97-112 are HIV patients
+subject_ids = [1,2,3,4] + range(97,143) # participants 1-4 are Swedish folks, 97-112 are HIV patients
 for j in subject_ids:
     p = Process(target=correct_data, args=(j,))
     p.start()
