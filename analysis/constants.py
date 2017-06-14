@@ -33,3 +33,4 @@ ALL_SEGMENTS_FN = 'all_segments.pickle'
 SAMPLING_RATE = 72.
 
 DEG_TO_RAD = np.pi / 180.
+RAD_TO_DEG = 180. / np.pi
