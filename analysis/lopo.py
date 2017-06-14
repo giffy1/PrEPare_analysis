@@ -104,6 +104,7 @@ else:
 
 def evaluate_leave_one_out(queue, patient_to_omit):
     print "Evaluating classifier omitting patient {}".format(patient_to_omit)
+    is_train_set=False
     X_train = None
     y_train = None
     X_test = None
@@ -117,9 +118,10 @@ def evaluate_leave_one_out(queue, patient_to_omit):
                 X_test = X_i
                 y_test = y_i
             else:
-                if X_train == None:
+                if not is_train_set:
                     X_train = X_i
                     y_train = y_i
+                    is_train_set=True
                 else:
                     X_train = np.append(X_train, X_i, axis=0)
                     y_train = np.append(y_train, y_i, axis=0)
