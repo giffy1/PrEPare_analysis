@@ -40,6 +40,7 @@ import numpy as np
 import os
 from multiprocessing import Process
 import constants
+from shutil import copyfile
 
 old_data_dir = constants.DATA_DIR
 new_data_dir = constants.PROCESSING_DIR
@@ -123,6 +124,8 @@ def correct_data(patient_id):
         
     with open(os.path.join(new_subject_dir, constants.METAWEAR_ACCELEROMETER_FN), "wb") as f:
         np.savetxt(f, metawear_accel_i, delimiter=",")
+
+    copyfile(os.path.join(old_subject_dir, "labels.txt"), os.path.join(new_subject_dir, "labels.txt"))
 
 subject_ids = [1,2,3,4] + range(97,143) # participants 1-4 are Swedish folks, 97-112 are HIV patients
 for j in subject_ids:
