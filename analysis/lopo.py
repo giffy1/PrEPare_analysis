@@ -75,10 +75,25 @@ import os
 from multiprocessing import Process, Queue
 import constants
 
+all_subjects = [1,2,3,4] + range(97,143)
+subjects = []
+
 plot_roc = False
 if len(sys.argv) > 1:
     if sys.argv[1] == '-p':
         plot_roc = True
+    elif sys.argv[1].startswith('subject='):
+        subject_input = sys.argv[1].split('=')[1]
+        for subject_subset in subject_input.split(','):
+            if ':' in subject_subset:
+                s,e = subject_subset.split(':')
+                subjects.extend(range(int(s),int(e)+1)) # include e
+            else:
+                subjects.append(int(subject_subset))
+    else:
+        subjects = all_subjects
+else:
+    subjects = all_subjects
         
 def binarize(y):
     # for two-class case only
