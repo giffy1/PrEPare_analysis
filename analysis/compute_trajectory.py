@@ -61,7 +61,7 @@ def compute_trajectory(patient_id):
         fuse.update_imu(wearable_gyro_i[i,1:4] * constants.DEG_TO_RAD, wearable_accel_i[i,1:4])
         w2 = qv_mult(fuse.quaternion.q, w)
         quaternions.append(fuse.quaternion.q)
-        w2 = np.multiply(w2, orientation_corrections[patient_id]) # apply orientation correction
+#         w2 = np.multiply(w2, orientation_corrections[patient_id]) # apply orientation correction
         trajectory.append(w2)
         
     T = np.asarray(trajectory)
@@ -91,6 +91,6 @@ def compute_trajectory(patient_id):
     with open(os.path.join(subject_dir, constants.SMOOTH_TRAJECTORY_FN), "wb") as f:
         np.savetxt(f, smooth_trajectory_with_timestamps, delimiter=",", fmt="%1f")
         
-for j in [1,2,3,4] + range(97,112): # participants 1-4 are Swedish folks, 97-112 are HIV patients
+for j in [1,2,3,4] + range(97,143): # participants 1-4 are Swedish folks, 97-112 are HIV patients
     p = Process(target=compute_trajectory, args=(j,))
     p.start()
