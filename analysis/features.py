@@ -2,17 +2,16 @@
 """
 Created on Tue Sep 27 13:08:49 2016
 
-@author: cs390mb
+PrEPare : Feature Extraction
+UMass Amherst & Swedish Medical
 
-This is the solution code for extracting features over accelerometer 
-windows. It doesn't include all the features mentioned in the 
-assignment, but it does have mean/variance, histogram features, 
-and dominant frequencies over the magnitude.
+This script contains functions for extracting features for classification.
 
 """
 
 import numpy as np
 from scipy.stats import stats
+import constants
 
 def _compute_mean_features(window):
     """
@@ -69,10 +68,25 @@ def _compute_amplitude(window):
     return np.max(window, axis=0) - np.min(window, axis=0)
     
 def extract_features(accelWindow, gyroWindow, distWindow, quaternionWindow):
+    """
+    Extracts features over the given motion data. These include statistical 
+    and histogram features, as well as duration, peaks, and pitch, roll 
+    and yaw deciles.
+    
+        :param accelWindow The window of accelerometer data.
+        :param gyroWindow The window of gyroscope data.
+        :param distWindow The distance-from-rest-point signal.
+        :param quaternionWindow The window of quaternions.
+        
+    The timestamps should not be included in any of the windows. It is 
+    assumed that the windows are of the same length and correspond to 
+    the same timestamps.
+    
+    """
     x = []
 
     window_len = len(distWindow)
-    peak_index = np.argmax(distWindow) #point at mouth
+    peak_index = np.argmax(distWindow) # point at mouth
     ascending_accel = accelWindow[:peak_index,:]
     descending_accel = accelWindow[peak_index:,:]
     
@@ -98,27 +112,29 @@ def extract_features(accelWindow, gyroWindow, distWindow, quaternionWindow):
     x=extract_features_for_window(x, descending_accel)
     x=extract_features_for_window(x, descending_gyro)
         
-    g = 9.8    
-    gX = accelWindow[:,0] / g
-    gY = accelWindow[:,1] / g
-    gZ = accelWindow[:,2] / g
+    gX = accelWindow[:,0] / constants.GRAVITY
+    gY = accelWindow[:,1] / constants.GRAVITY
+    gZ = accelWindow[:,2] / constants.GRAVITY
     
     qW = quaternionWindow[:,0]
     qX = quaternionWindow[:,1]
     qY = quaternionWindow[:,2]
     qZ = quaternionWindow[:,3]
     
-    roll = (np.arctan2(2*qY*qW + 2*qX*qZ, 1 - 2*qY*qY - 2*qZ*qZ)*180)/np.pi # using quaternions
-#    roll = (np.arctan2(-gY, gZ)*180)/np.pi # using gyro
-    
-    yaw = (np.arctan2(2*qX*qW + 2*qY*qZ, 1 - 2*qX*qX - 2*qZ*qZ)*180)/np.pi # using quaternions
-
-    pitch = (np.arcsin(2*qX*qY + 2*qZ*qW)*180)/np.pi # we can do this?? from quaternions again 
-#    pitch = (np.arctan2(gX, np.sqrt(gY * gY + gZ * gZ))*180)/np.pi # using gyro
+    correct_by_quaternions = True # whether the pitch and roll should be computed using quaternions, otherwise gyro (can't compute yaw from gyro alone)
+    if correct_by_quaternions:
+        roll = np.arctan2(2*qY*qW + 2*qX*qZ, 1 - 2*qY*qY - 2*qZ*qZ)*constants.RAD_TO_DEG
+        yaw = np.arctan2(2*qX*qW + 2*qY*qZ, 1 - 2*qX*qX - 2*qZ*qZ)*constants.RAD_TO_DEG
+        pitch = np.arcsin(2*qX*qY + 2*qZ*qW)*constants.RAD_TO_DEG
+        yaw_deciles = np.percentile(yaw, np.arange(0, 100, 10))
+        x = np.append(x, yaw_deciles)
+    else:
+        roll = np.arctan2(-gY, gZ)*constants.RAD_TO_DEG
+        pitch = np.arctan2(gX, np.sqrt(gY * gY + gZ * gZ))*constants.RAD_TO_DEG
     
     roll_deciles = np.percentile(roll, np.arange(0, 100, 10))
     pitch_deciles = np.percentile(pitch, np.arange(0, 100, 10))
-    yaw_deciles = np.percentile(yaw, np.arange(0, 100, 10))
+    
     x = np.append(x, roll_deciles)
     x = np.append(x, pitch_deciles)
     x = np.append(x, yaw_deciles)
@@ -131,13 +147,13 @@ def extract_features(accelWindow, gyroWindow, distWindow, quaternionWindow):
 
 def extract_features_for_window(x, window):
     """
-    Here is where you will extract your features from the data over 
-    the given window. We have given you an example of computing 
-    the mean and appending it to the feature matrix X.
+    Extracts features over a given window. These include various statistical 
+    and histogram features over the window and over its magnitude.
     
-    Make sure that X is an N x d matrix, where N is the number 
-    of data points and d is the number of features.
-    
+        :param x The feature vector to append to
+        :param window The window of data over which to extract features
+        
+    Returns the feature vector x, which is given as the first parameter.
     """
     
     magnitude = np.sqrt(np.sum(np.square(window), axis=1))
